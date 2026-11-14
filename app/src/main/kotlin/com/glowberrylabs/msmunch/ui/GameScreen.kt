@@ -134,7 +134,6 @@ private fun PortraitLayout(
                 .height(178.dp)
         ) {
             Joystick(
-                handedness = uiState.handedness,
                 enabled = game.phase == GamePhase.RUNNING,
                 onDirection = onDirection,
                 modifier = Modifier.fillMaxSize()
@@ -187,7 +186,6 @@ private fun SideGutter(side: Handedness, uiState: GameUiState, game: GameState, 
     Box(modifier = Modifier.width(172.dp).fillMaxHeight()) {
         if (uiState.handedness == side) {
             Joystick(
-                handedness = side,
                 enabled = game.phase == GamePhase.RUNNING,
                 onDirection = onDirection,
                 modifier = Modifier.fillMaxSize()

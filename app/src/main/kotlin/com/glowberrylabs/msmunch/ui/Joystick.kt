@@ -30,25 +30,19 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.glowberrylabs.msmunch.R
 import com.glowberrylabs.msmunch.game.Direction
-import com.glowberrylabs.msmunch.game.Handedness
 import com.glowberrylabs.msmunch.game.JoystickResolver
 import kotlin.math.hypot
 import kotlin.math.max
 
 @Composable
-fun Joystick(
-    handedness: Handedness,
-    enabled: Boolean,
-    onDirection: (Direction) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val resolver = remember(handedness) { JoystickResolver() }
+fun Joystick(enabled: Boolean, onDirection: (Direction) -> Unit, modifier: Modifier = Modifier) {
+    val resolver = remember { JoystickResolver() }
     val density = LocalDensity.current
     val baseRadius = with(density) { 66.dp.toPx() }
     val knobRadius = with(density) { 28.dp.toPx() }
     val padding = with(density) { 6.dp.toPx() }
     val travel = baseRadius * 0.55f
-    var knobOffset by remember(handedness) { mutableStateOf(Offset.Zero) }
+    var knobOffset by remember { mutableStateOf(Offset.Zero) }
     val view = LocalView.current
     val currentOnDirection by rememberUpdatedState(onDirection)
     val description = stringResource(R.string.joystick_description)
@@ -63,10 +57,9 @@ fun Joystick(
     val inputModifier = if (enabled) {
         Modifier
             .fillMaxSize()
-            .pointerInput(handedness, baseRadius, travel) {
+            .pointerInput(baseRadius, travel) {
                 awaitEachGesture {
                     handleJoystickGesture(
-                        handedness = handedness,
                         baseRadius = baseRadius,
                         padding = padding,
                         travel = travel,
@@ -84,7 +77,6 @@ fun Joystick(
     Box(modifier = modifier.semantics { contentDescription = description }) {
         Canvas(modifier = inputModifier) {
             drawJoystick(
-                handedness = handedness,
                 enabled = enabled,
                 baseRadius = baseRadius,
                 knobRadius = knobRadius,
@@ -96,7 +88,6 @@ fun Joystick(
 }
 
 private suspend fun AwaitPointerEventScope.handleJoystickGesture(
-    handedness: Handedness,
     baseRadius: Float,
     padding: Float,
     travel: Float,
@@ -107,7 +98,7 @@ private suspend fun AwaitPointerEventScope.handleJoystickGesture(
 ) {
     val down = awaitFirstDown(requireUnconsumed = false)
     val center = Offset(
-        x = baseCenterX(size.width.toFloat(), handedness, baseRadius, padding),
+        x = baseCenterX(size.width.toFloat(), baseRadius, padding),
         y = size.height / 2f
     )
     val previous = resolver.direction
@@ -154,7 +145,6 @@ private suspend fun AwaitPointerEventScope.handleJoystickGesture(
 }
 
 private fun DrawScope.drawJoystick(
-    handedness: Handedness,
     enabled: Boolean,
     baseRadius: Float,
     knobRadius: Float,
@@ -162,7 +152,7 @@ private fun DrawScope.drawJoystick(
     knobOffset: Offset
 ) {
     val center = Offset(
-        x = baseCenterX(size.width, handedness, baseRadius, padding),
+        x = baseCenterX(size.width, baseRadius, padding),
         y = size.height / 2f
     )
     val alpha = if (enabled) 1f else 0.4f
@@ -233,13 +223,10 @@ private fun DrawScope.drawKnob(center: Offset, radius: Float, alpha: Float) {
     )
 }
 
-private fun baseCenterX(width: Float, handedness: Handedness, radius: Float, padding: Float): Float {
+private fun baseCenterX(width: Float, radius: Float, padding: Float): Float {
     val minimum = radius * GLOW_FACTOR + padding
     val maximum = max(minimum, width - radius * GLOW_FACTOR - padding)
-    return when (handedness) {
-        Handedness.LEFT -> (width / 6f).coerceIn(minimum, maximum)
-        Handedness.RIGHT -> (width * 5f / 6f).coerceIn(minimum, maximum)
-    }
+    return (width / 2f).coerceIn(minimum, maximum)
 }
 
 private fun clampOffset(offset: Offset, maxLength: Float): Offset {
