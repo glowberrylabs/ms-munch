@@ -63,7 +63,6 @@ class GameSounds(context: Context) {
     }
 
     fun stopAll() {
-        if (muted) return
         soundIds.values.forEach { id ->
             soundPool.stop(id)
         }
