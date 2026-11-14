@@ -3,7 +3,7 @@
 ## Intent
 
 - An offline Android maze-chase game inspired by classic 1980s arcade
-  games, with an original name, art, maze layouts, and audio.
+  games, with an original name, art, and audio.
 - Designed for kids: pick up and play, no reading required, no ads, no
   accounts, no network.
 - Short rounds, immediate replay, and a persistent best score.
@@ -31,21 +31,28 @@
 
 ## Legal guardrail
 
-- Homage only. No Bandai Namco names, characters, maze layouts,
-  sprites, sounds, or fonts.
-- All mazes, character designs, vector art, and generated audio are
-  original.
-- In-app copy and documentation call it a maze chase and never use the
-  Pac-Man trademarks.
+- Homage only. No Bandai Namco names, characters, sprites, sounds, or
+  fonts.
+- Maze layouts reproduce the four classic Ms. Pac-Man arcade mazes.
+  Character designs, vector art, and generated audio are original.
+- In-app copy and user-facing documentation call it a maze chase and
+  never use the Pac-Man trademarks.
+- Reconfirm the licensing posture before any public distribution, since
+  the layouts are copied from the arcade game.
 
 ## Board and rules
 
 - 28 columns by 31 rows, the classic maze-chase proportion.
-- Two original layouts, Maze A and Maze B, alternate each level.
+- Four layouts matching the arcade mazes. Levels 1-2 use maze 1,
+  3-5 maze 2, 6-9 maze 3, and 10-13 maze 4. After level 13, mazes 3
+  and 4 alternate every four levels.
 - Tile types: wall, dot, power pellet, empty corridor, ghost house
   door, house interior, and tunnel.
-- Side tunnels wrap horizontally.
-- About 240 dots per maze and four power pellets near the corners.
+- Side tunnels wrap horizontally. Maze 1 has tunnels on rows 8 and
+  17, maze 2 on rows 1 and 23, maze 3 on row 9, and maze 4 on rows
+  13 and 16 (zero-based rows).
+- Edible counts per maze, including power pellets: 224, 244, 242, and
+  238. Each maze has exactly four power pellets.
 - Clear all dots and pellets to complete a level.
 - Three lives. One extra life at 10,000 points per game.
 - Fruit appears below the house at 70 and 170 dots eaten and stays for
@@ -104,8 +111,8 @@
 
 - Dot 10, pellet 50. Fruit is worth 100, 300, 500, 700, 1000, 2000,
   3000, then 5000 by level band, cycling.
-- Clearing a level pauses briefly, then starts the next level with the
-  other maze, fresh dots, and reset actors.
+- Clearing a level pauses briefly, then starts the next level with
+  that level's maze, fresh dots, and reset actors.
 - Ghost normal speed is 5.9 tiles per second at level 1, increases by
   0.22 per level, and caps at 7.8.
 - Speeds never drop below their level 1 values.
@@ -210,8 +217,9 @@
 ## Testing
 
 - JUnit 4 unit tests for the engine:
-  - parsing and validating both mazes, including connectivity,
-    pellet reachability, house exits, and dot totals
+  - parsing and validating all four mazes, including connectivity,
+    pellet reachability, house exits, dot totals, tunnel rows, and
+    dead ends
   - corridor movement and wall blocking
   - perpendicular turn at a tile center with snapping
   - buffered turn applied at the next legal center
@@ -236,7 +244,8 @@
   launches on the pixel9a emulator.
 - Manual verification: portrait and landscape, handedness, joystick
   tap and drag, pause, background and foreground, mute, high score
-  persistence, both mazes, the frightened chain, death, and game over.
+  persistence, all four mazes, the frightened chain, death, and game
+  over.
 
 ## Stages
 
@@ -244,7 +253,7 @@
 2. Project scaffold: gitignore, editorconfig, licenses, Gradle wrapper
    and scripts, manifest, theme, launcher placeholder, justfile, README
    skeleton.
-3. Maze data, parser, validator, two original layouts, and tests.
+3. Maze data, parser, validator, four arcade layouts, and tests.
 4. Player and actor movement engine with tests.
 5. Ghost AI, house and mode timers, frightened and eyes, with tests.
 6. Round flow: scoring, fruit, lives, levels, extra life, events, and
@@ -276,7 +285,7 @@
   permission.
 - Joystick steering, tap-to-turn, handedness, and pause work in
   portrait and landscape.
-- Both mazes play, all four ghost personalities are observable, and
+- All four mazes play, all four ghost personalities are observable, and
   the frightened chain and eyes return work.
 - Lives, extra life, fruit, level ramp, high score, mute, and
   handedness persist correctly.
