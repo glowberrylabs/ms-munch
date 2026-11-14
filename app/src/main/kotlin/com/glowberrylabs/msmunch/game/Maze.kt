@@ -44,4 +44,52 @@ data class Maze(
     fun dotCount(): Int = tiles.count { it == Tile.DOT }
 
     fun pelletCount(): Int = tiles.count { it == Tile.PELLET }
+
+    fun indexOf(pos: TilePos): Int = wrapColumn(pos.col) + pos.row * columns
+
+    val exitDistances: IntArray = distanceField(listOf(houseExit))
+
+    val houseDistances: IntArray = distanceField(
+        tiles.indices.filter { tiles[it] == Tile.HOUSE }
+            .map { TilePos(it % columns, it / columns) }
+    )
+
+    fun exitDistanceAt(pos: TilePos): Int = exitDistances[indexOf(pos)]
+
+    fun houseDistanceAt(pos: TilePos): Int = houseDistances[indexOf(pos)]
+
+    private fun distanceField(sources: List<TilePos>): IntArray {
+        val distances = IntArray(columns * rows) { UNREACHABLE }
+        val queue = ArrayDeque<TilePos>()
+        sources.forEach { source ->
+            distances[indexOf(source)] = 0
+            queue.addLast(source)
+        }
+        while (queue.isNotEmpty()) {
+            val pos = queue.removeFirst()
+            for (offset in NEIGHBOR_OFFSETS) {
+                enqueueNeighbor(queue, distances, pos, offset)
+            }
+        }
+        return distances
+    }
+
+    private fun enqueueNeighbor(queue: ArrayDeque<TilePos>, distances: IntArray, pos: TilePos, offset: TilePos) {
+        val next = TilePos(wrapColumn(pos.col + offset.col), pos.row + offset.row)
+        if (next.row !in 0 until rows) return
+        val index = indexOf(next)
+        if (distances[index] != UNREACHABLE || !isGhostWalkable(next)) return
+        distances[index] = distances[indexOf(pos)] + 1
+        queue.addLast(next)
+    }
+
+    private companion object {
+        const val UNREACHABLE = Int.MAX_VALUE
+        val NEIGHBOR_OFFSETS = listOf(
+            TilePos(0, -1),
+            TilePos(-1, 0),
+            TilePos(0, 1),
+            TilePos(1, 0)
+        )
+    }
 }

@@ -23,4 +23,6 @@ enum class Direction(val dx: Int, val dy: Int) {
         get() = dy != 0
 
     fun offset(pos: TilePos): TilePos = TilePos(pos.col + dx, pos.row + dy)
+
+    fun offset(pos: TilePos, steps: Int): TilePos = TilePos(pos.col + dx * steps, pos.row + dy * steps)
 }
