@@ -176,9 +176,9 @@ private fun DrawScope.drawBase(center: Offset, radius: Float, alpha: Float) {
         brush = Brush.radialGradient(
             colors = listOf(GamePalette.Wall.copy(alpha = 0.18f * alpha), Color.Transparent),
             center = center,
-            radius = radius * 1.35f
+            radius = radius * GLOW_FACTOR
         ),
-        radius = radius * 1.35f,
+        radius = radius * GLOW_FACTOR,
         center = center
     )
     drawCircle(
@@ -234,8 +234,8 @@ private fun DrawScope.drawKnob(center: Offset, radius: Float, alpha: Float) {
 }
 
 private fun baseCenterX(width: Float, handedness: Handedness, radius: Float, padding: Float): Float {
-    val minimum = radius + padding
-    val maximum = max(minimum, width - radius - padding)
+    val minimum = radius * GLOW_FACTOR + padding
+    val maximum = max(minimum, width - radius * GLOW_FACTOR - padding)
     return when (handedness) {
         Handedness.LEFT -> (width / 6f).coerceIn(minimum, maximum)
         Handedness.RIGHT -> (width * 5f / 6f).coerceIn(minimum, maximum)
@@ -248,6 +248,8 @@ private fun clampOffset(offset: Offset, maxLength: Float): Offset {
     val scale = maxLength / length
     return Offset(offset.x * scale, offset.y * scale)
 }
+
+private const val GLOW_FACTOR = 1.15f
 
 private val DIRECTION_TICKS = listOf(
     Offset(0f, -1f),

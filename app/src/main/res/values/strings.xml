@@ -2,4 +2,22 @@
 <resources>
     <string name="app_name">Ms. Munch</string>
     <string name="joystick_description">Steering joystick</string>
+    <string name="start_subtitle">Munch every dot!</string>
+    <string name="play">Play</string>
+    <string name="play_again">Play again</string>
+    <string name="resume">Resume</string>
+    <string name="restart">Restart</string>
+    <string name="paused">Paused</string>
+    <string name="ready">Ready!</string>
+    <string name="level_cleared">Maze cleared!</string>
+    <string name="nice_try">Nice try!</string>
+    <string name="score_label">SCORE</string>
+    <string name="best_label">BEST</string>
+    <string name="level_label">LV %1$d</string>
+    <string name="pause_action">Pause</string>
+    <string name="mute_sound">Mute sound</string>
+    <string name="enable_sound">Enable sound</string>
+    <string name="left_handed">Left</string>
+    <string name="right_handed">Right</string>
+    <string name="joystick_side">Joystick side</string>
 </resources>

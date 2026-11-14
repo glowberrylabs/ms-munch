@@ -1,21 +1,22 @@
 package com.glowberrylabs.msmunch
 
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import com.glowberrylabs.msmunch.ui.GamePalette
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.core.view.WindowCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.glowberrylabs.msmunch.game.GamePhase
+import com.glowberrylabs.msmunch.game.GameViewModel
+import com.glowberrylabs.msmunch.ui.GameActions
+import com.glowberrylabs.msmunch.ui.GameScreen
 import com.glowberrylabs.msmunch.ui.MsMunchTheme
 
 class MainActivity : ComponentActivity() {
@@ -26,26 +27,41 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
         )
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
         setContent {
             MsMunchTheme {
-                PlaceholderScreen()
+                val viewModel: GameViewModel = viewModel()
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+                BackHandler {
+                    if (uiState.game.phase == GamePhase.RUNNING) {
+                        viewModel.pause()
+                    } else {
+                        finish()
+                    }
+                }
+
+                val actions = remember(viewModel) {
+                    GameActions(
+                        onStart = viewModel::startGame,
+                        onPause = viewModel::pause,
+                        onResume = viewModel::resume,
+                        onRestart = viewModel::restart,
+                        onDirection = viewModel::turn,
+                        onToggleMute = viewModel::toggleMute,
+                        onHandedness = viewModel::setHandedness,
+                        onFrame = viewModel::advance
+                    )
+                }
+
+                GameScreen(uiState = uiState, actions = actions)
             }
         }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(GamePalette.Background),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = stringResource(R.string.app_name),
-            color = GamePalette.Muncher,
-            style = MaterialTheme.typography.displaySmall
-        )
     }
 }
