@@ -6,62 +6,11 @@ import kotlin.random.Random
 
 class GameEngine(private val random: Random = Random.Default) {
 
-    fun newGame(maze: Maze = Mazes.forLevel(1)): GameState {
-        val schedule = LevelTable.schedule(1)
-        val slots = maze.houseSlots
-        val grumps = listOf(
-            Grump(
-                kind = GhostKind.COCOA,
-                pos = maze.houseExit.toPosition(),
-                direction = Direction.LEFT,
-                mode = GhostMode.SCATTER,
-                releaseAtDots = 0,
-                homeSlot = slots[0]
-            ),
-            Grump(
-                kind = GhostKind.BUBBLE,
-                pos = slots[1].toPosition(),
-                direction = Direction.UP,
-                mode = GhostMode.IN_HOUSE,
-                releaseAtDots = 20,
-                homeSlot = slots[1]
-            ),
-            Grump(
-                kind = GhostKind.TAFFY,
-                pos = slots[2].toPosition(),
-                direction = Direction.DOWN,
-                mode = GhostMode.IN_HOUSE,
-                releaseAtDots = 45,
-                homeSlot = slots[2]
-            ),
-            Grump(
-                kind = GhostKind.MINT,
-                pos = slots[3].toPosition(),
-                direction = Direction.UP,
-                mode = GhostMode.IN_HOUSE,
-                releaseAtDots = 70,
-                homeSlot = slots[3]
-            )
-        )
-        return GameState(
-            phase = GamePhase.START,
-            maze = maze,
-            board = maze.tiles,
-            player = MsMunch(pos = maze.playerStart.toPosition()),
-            grumps = grumps,
-            globalMode = GhostMode.SCATTER,
-            modeIndex = 0,
-            modeRemaining = schedule.first().seconds
-        )
-    }
+    private val ghosts = GhostController(random)
 
-    fun start(state: GameState): GameState = when (state.phase) {
-        GamePhase.START -> state.copy(
-            phase = GamePhase.READY,
-            player = state.player.copy(pos = state.maze.playerStart.toPosition())
-        )
-        else -> state
-    }
+    fun newGame(maze: Maze = Mazes.forLevel(1), highScore: Int = 0): GameState = RoundFlow.newGame(maze, highScore)
+
+    fun start(state: GameState): GameState = RoundFlow.start(state)
 
     fun turn(state: GameState, direction: Direction): GameState =
         state.copy(player = state.player.copy(desiredDirection = direction))
@@ -87,20 +36,59 @@ class GameEngine(private val random: Random = Random.Default) {
     }
 
     fun advance(state: GameState, dtSeconds: Double): Pair<GameState, List<GameEvent>> {
-        if (state.phase != GamePhase.RUNNING || dtSeconds <= 0.0) {
-            return state to emptyList()
+        if (dtSeconds <= 0.0) return state to emptyList()
+        return when (state.phase) {
+            GamePhase.READY -> advanceReady(state, dtSeconds)
+            GamePhase.RUNNING -> advanceRunning(state, dtSeconds)
+            GamePhase.DYING -> advanceDying(state, dtSeconds)
+            GamePhase.LEVEL_CLEAR -> advanceLevelClear(state, dtSeconds)
+            else -> state to emptyList()
         }
+    }
+
+    private fun advanceReady(state: GameState, dt: Double): Pair<GameState, List<GameEvent>> {
+        val remaining = state.phaseRemaining - dt
+        return if (remaining > 0.0) {
+            state.copy(phaseRemaining = remaining) to emptyList()
+        } else {
+            state.copy(phase = GamePhase.RUNNING, phaseRemaining = 0.0) to listOf(GameEvent.LevelStart)
+        }
+    }
+
+    private fun advanceDying(state: GameState, dt: Double): Pair<GameState, List<GameEvent>> {
+        val remaining = state.phaseRemaining - dt
+        if (remaining > 0.0) {
+            return state.copy(phaseRemaining = remaining) to emptyList()
+        }
+        return if (state.lives > 0) {
+            RoundFlow.respawn(state) to listOf(GameEvent.LevelStart)
+        } else {
+            val highScore = max(state.highScore, state.score)
+            state.copy(phase = GamePhase.GAME_OVER, phaseRemaining = 0.0, highScore = highScore) to
+                listOf(GameEvent.GameOver)
+        }
+    }
+
+    private fun advanceLevelClear(state: GameState, dt: Double): Pair<GameState, List<GameEvent>> {
+        val remaining = state.phaseRemaining - dt
+        return if (remaining > 0.0) {
+            state.copy(phaseRemaining = remaining) to emptyList()
+        } else {
+            RoundFlow.nextLevel(state) to listOf(GameEvent.LevelStart)
+        }
+    }
+
+    private fun advanceRunning(state: GameState, dtSeconds: Double): Pair<GameState, List<GameEvent>> {
         var current = state
         var remaining = dtSeconds
         val events = mutableListOf<GameEvent>()
-        while (remaining > EPSILON) {
+        while (remaining > EPSILON && current.phase == GamePhase.RUNNING) {
             val step = min(remaining, MAX_STEP)
             val (next, stepEvents) = advanceStep(current, step)
             current = next
             events += stepEvents
             remaining -= step
         }
-        events += collectEvents(state, current)
         return current to events
     }
 
@@ -114,23 +102,34 @@ class GameEngine(private val random: Random = Random.Default) {
                 dt = dt
             )
         )
+
+        val (fed, eatingEvents) = resolveEating(current)
+        val events = eatingEvents.toMutableList()
+        current = fed
+        if (current.phase != GamePhase.RUNNING) return current to events
+
         current = current.copy(
-            grumps = current.grumps.map { updateGrump(current, it, dt) }
+            grumps = current.grumps.map { ghosts.update(current, it, dt) }
         )
-        return resolveCollisions(current)
+        if (current.phase != GamePhase.RUNNING) return current to events
+
+        val (resolved, collisionEvents) = CollisionResolver.resolve(current)
+        events += collisionEvents
+        return resolved to events
     }
 
     private fun updateTimers(state: GameState, dt: Double): GameState {
-        if (state.frightenedRemaining > 0.0) {
-            val remaining = state.frightenedRemaining - dt
+        var current = updateFruitTimer(state, dt)
+        if (current.frightenedRemaining > 0.0) {
+            val remaining = current.frightenedRemaining - dt
             return if (remaining > 0.0) {
-                state.copy(frightenedRemaining = remaining)
+                current.copy(frightenedRemaining = remaining)
             } else {
-                state.copy(
+                current.copy(
                     frightenedRemaining = 0.0,
-                    grumps = state.grumps.map { grump ->
+                    grumps = current.grumps.map { grump ->
                         if (grump.mode == GhostMode.FRIGHTENED) {
-                            grump.copy(mode = state.globalMode, decisionTile = -1)
+                            grump.copy(mode = current.globalMode, decisionTile = -1)
                         } else {
                             grump
                         }
@@ -139,9 +138,19 @@ class GameEngine(private val random: Random = Random.Default) {
             }
         }
 
-        if (!state.modeRemaining.isFinite()) return state
-        val remaining = state.modeRemaining - dt
-        return if (remaining > 0.0) state.copy(modeRemaining = remaining) else advanceMode(state)
+        if (!current.modeRemaining.isFinite()) return current
+        val remaining = current.modeRemaining - dt
+        return if (remaining > 0.0) current.copy(modeRemaining = remaining) else advanceMode(current)
+    }
+
+    private fun updateFruitTimer(state: GameState, dt: Double): GameState {
+        val fruit = state.fruit ?: return state
+        val remaining = fruit.remaining - dt
+        return if (remaining > 0.0) {
+            state.copy(fruit = fruit.copy(remaining = remaining))
+        } else {
+            state.copy(fruit = null)
+        }
     }
 
     private fun advanceMode(state: GameState): GameState {
@@ -167,114 +176,73 @@ class GameEngine(private val random: Random = Random.Default) {
         )
     }
 
-    private fun updateGrump(state: GameState, grump: Grump, dt: Double): Grump = when (grump.mode) {
-        GhostMode.EYES -> updateEyes(state, grump, dt)
-        GhostMode.IN_HOUSE -> updateHouse(state, grump, dt)
-        else -> updateActive(state, grump, dt)
-    }
-
-    private fun updateEyes(state: GameState, grump: Grump, dt: Double): Grump {
-        if (state.maze.houseDistanceAt(grump.pos.tile(state.maze)) == 0) {
-            return grump.copy(
-                mode = GhostMode.IN_HOUSE,
-                pos = grump.homeSlot.toPosition(),
-                direction = Direction.UP,
-                houseDelayRemaining = REVIVE_DELAY,
-                releaseAtDots = state.dotsEaten,
-                decisionTile = -1
-            )
-        }
-        return GhostMotion.step(
-            maze = state.maze,
-            grump = grump,
-            speed = EYES_SPEED,
-            dt = dt,
-            target = state.maze.door,
-            random = random,
-            pathDistances = state.maze.houseDistances
-        )
-    }
-
-    private fun updateHouse(state: GameState, grump: Grump, dt: Double): Grump {
-        val delay = max(0.0, grump.houseDelayRemaining - dt)
-        if (delay > 0.0 || state.dotsEaten < grump.releaseAtDots) {
-            return grump.copy(houseDelayRemaining = delay)
-        }
-        val stepped = GhostMotion.step(
-            maze = state.maze,
-            grump = grump.copy(houseDelayRemaining = delay),
-            speed = LevelTable.ghostSpeed(state.level),
-            dt = dt,
-            target = state.maze.houseExit,
-            random = random,
-            pathDistances = state.maze.exitDistances
-        )
-        return if (state.maze.exitDistanceAt(stepped.pos.tile(state.maze)) == 0) {
-            stepped.copy(
-                mode = state.globalMode,
-                direction = Direction.LEFT,
-                decisionTile = -1
-            )
-        } else {
-            stepped
-        }
-    }
-
-    private fun updateActive(state: GameState, grump: Grump, dt: Double): Grump {
-        val baseSpeed = if (grump.mode == GhostMode.FRIGHTENED) {
-            LevelTable.ghostSpeed(state.level) * FRIGHTENED_SPEED_FACTOR
-        } else {
-            LevelTable.ghostSpeed(state.level)
-        }
-        val tunnelFactor = if (state.maze.tileAt(grump.pos.tile(state.maze)) == Tile.TUNNEL) {
-            TUNNEL_SPEED_FACTOR
-        } else {
-            1.0
-        }
-        return GhostMotion.step(
-            maze = state.maze,
-            grump = grump,
-            speed = baseSpeed * tunnelFactor,
-            dt = dt,
-            target = GhostTargets.targetFor(grump.kind, state),
-            random = random
-        )
-    }
-
-    private fun resolveCollisions(state: GameState): Pair<GameState, List<GameEvent>> {
-        var chain = state.ghostChain
+    private fun resolveEating(state: GameState): Pair<GameState, List<GameEvent>> {
+        var current = state
         val events = mutableListOf<GameEvent>()
-        val grumps = state.grumps.map { grump ->
-            val caught = grump.mode == GhostMode.FRIGHTENED &&
-                state.player.pos.distanceSquaredTo(grump.pos) <= COLLISION_DISTANCE_SQUARED
-            if (caught) {
-                chain = min(chain + 1, MAX_GHOST_CHAIN)
-                events += GameEvent.GhostEaten
-                grump.copy(
-                    mode = GhostMode.EYES,
-                    direction = grump.direction.opposite,
-                    decisionTile = -1
-                )
-            } else {
-                grump
+        val tilePos = current.player.pos.tile(current.maze)
+        val index = current.maze.indexOf(tilePos)
+        val tile = current.board[index]
+
+        if (tile.isEdible) {
+            val board = current.board.toMutableList()
+            board[index] = Tile.EMPTY
+            current = current.copy(board = board, dotsEaten = current.dotsEaten + 1)
+            current = when (tile) {
+                Tile.DOT -> {
+                    events += GameEvent.Chomp
+                    current.copy(
+                        score = current.score + Scoring.DOT_SCORE,
+                        dotsRemaining = current.dotsRemaining - 1
+                    )
+                }
+                Tile.PELLET -> {
+                    events += GameEvent.Pellet
+                    frighten(
+                        current.copy(
+                            score = current.score + Scoring.PELLET_SCORE,
+                            pelletsRemaining = current.pelletsRemaining - 1
+                        )
+                    )
+                }
+                else -> current
             }
         }
-        return if (events.isEmpty()) {
-            state to emptyList()
-        } else {
-            state.copy(grumps = grumps, ghostChain = chain) to events
+
+        val fruit = current.fruit
+        if (fruit != null && fruit.pos == tilePos) {
+            events += GameEvent.Fruit
+            current = current.copy(score = current.score + LevelTable.fruitValue(current.level), fruit = null)
         }
+
+        current = spawnFruitIfNeeded(current)
+        current = Scoring.awardExtraLife(current, events)
+        current = checkLevelClear(current, events)
+        return current to events
     }
 
-    private fun collectEvents(before: GameState, after: GameState): List<GameEvent> {
-        val events = mutableListOf<GameEvent>()
-        if (after.phase == GamePhase.LEVEL_CLEAR && before.phase != GamePhase.LEVEL_CLEAR) {
-            events += GameEvent.LevelClear
+    private fun spawnFruitIfNeeded(state: GameState): GameState {
+        val threshold = when (state.fruitSpawned) {
+            0 -> FIRST_FRUIT_DOTS
+            1 -> SECOND_FRUIT_DOTS
+            else -> return state
         }
-        if (after.phase == GamePhase.GAME_OVER && before.phase != GamePhase.GAME_OVER) {
-            events += GameEvent.GameOver
-        }
-        return events
+        if (state.dotsEaten < threshold) return state
+        return state.copy(
+            fruit = Fruit(state.maze.fruitAnchor, FRUIT_LIFETIME),
+            fruitSpawned = state.fruitSpawned + 1
+        )
+    }
+
+    private fun checkLevelClear(state: GameState, events: MutableList<GameEvent>): GameState {
+        if (state.dotsRemaining > 0 || state.pelletsRemaining > 0) return state
+        events += GameEvent.LevelClear
+        return state.copy(
+            phase = GamePhase.LEVEL_CLEAR,
+            phaseRemaining = RoundFlow.LEVEL_CLEAR_SECONDS,
+            fruit = null,
+            frightenedRemaining = 0.0,
+            ghostChain = 0
+        )
     }
 
     private fun GhostMode.isActive(): Boolean =
@@ -283,11 +251,8 @@ class GameEngine(private val random: Random = Random.Default) {
     companion object {
         const val MAX_STEP = 1.0 / 120.0
         private const val EPSILON = 1e-9
-        private const val EYES_SPEED = 12.0
-        private const val FRIGHTENED_SPEED_FACTOR = 0.55
-        private const val TUNNEL_SPEED_FACTOR = 0.6
-        private const val REVIVE_DELAY = 1.0
-        private const val MAX_GHOST_CHAIN = 4
-        private const val COLLISION_DISTANCE_SQUARED = 0.7 * 0.7
+        private const val FIRST_FRUIT_DOTS = 70
+        private const val SECOND_FRUIT_DOTS = 170
+        private const val FRUIT_LIFETIME = 9.0
     }
 }

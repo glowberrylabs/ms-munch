@@ -10,6 +10,8 @@ object LevelTable {
 
     fun frightenedSeconds(level: Int): Double = (7.0 - 0.5 * (level - 1)).coerceAtLeast(2.0)
 
+    fun fruitValue(level: Int): Int = FRUIT_VALUES[(level - 1) % FRUIT_VALUES.size]
+
     fun schedule(level: Int): List<ModeWindow> {
         val scatters = when {
             level <= 2 -> listOf(6.0, 5.0, 4.0)
@@ -31,4 +33,6 @@ object LevelTable {
     }
 
     private const val CHASE_SECONDS = 20.0
+
+    private val FRUIT_VALUES = listOf(100, 300, 500, 700, 1000, 2000, 3000, 5000)
 }

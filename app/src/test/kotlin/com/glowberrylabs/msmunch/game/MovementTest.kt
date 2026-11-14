@@ -19,7 +19,9 @@ class MovementTest {
         phase = phase,
         maze = maze,
         board = maze.tiles,
-        player = MsMunch(Position(x, y), direction, desired)
+        player = MsMunch(Position(x, y), direction, desired),
+        dotsRemaining = maze.dotCount(),
+        pelletsRemaining = maze.pelletCount()
     )
 
     @Test
