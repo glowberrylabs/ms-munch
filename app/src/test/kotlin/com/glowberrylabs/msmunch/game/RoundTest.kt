@@ -11,7 +11,7 @@ import org.junit.Test
 class RoundTest {
 
     private val engine = GameEngine(kotlin.random.Random(1))
-    private val maze = Mazes.A
+    private val maze = Mazes.forLevel(1)
 
     private fun running(): GameState = engine.newGame(maze).copy(phase = GamePhase.RUNNING)
 
@@ -22,8 +22,8 @@ class RoundTest {
 
     @Test
     fun `eating a dot scores ten and clears the tile`() {
-        val start = at(TilePos(9, 22))
-        val index = maze.indexOf(TilePos(9, 22))
+        val start = at(TilePos(9, 23))
+        val index = maze.indexOf(TilePos(9, 23))
         val (result, events) = engine.advance(start, 1.0 / 120.0)
         assertEquals(10, result.score)
         assertEquals(Tile.EMPTY, result.board[index])
@@ -33,7 +33,7 @@ class RoundTest {
 
     @Test
     fun `eating a pellet scores fifty and frightens ghosts`() {
-        val pellet = TilePos(1, 3)
+        val pellet = TilePos(1, 2)
         val (result, events) = engine.advance(at(pellet), 1.0 / 120.0)
         assertEquals(50, result.score)
         assertEquals(3, result.pelletsRemaining)
@@ -49,7 +49,7 @@ class RoundTest {
             dotsRemaining = maze.dotCount() - 69,
             grumps = emptyList()
         )
-        val (withFruit, _) = engine.advance(at(TilePos(9, 22), start), 1.0 / 120.0)
+        val (withFruit, _) = engine.advance(at(TilePos(9, 23), start), 1.0 / 120.0)
         assertEquals(70, withFruit.dotsEaten)
         assertEquals(1, withFruit.fruitSpawned)
         assertNotNull(withFruit.fruit)
@@ -67,7 +67,7 @@ class RoundTest {
             fruitSpawned = 1,
             grumps = emptyList()
         )
-        val (result, _) = engine.advance(at(TilePos(9, 22), start), 1.0 / 120.0)
+        val (result, _) = engine.advance(at(TilePos(9, 23), start), 1.0 / 120.0)
         assertEquals(170, result.dotsEaten)
         assertEquals(2, result.fruitSpawned)
         assertNotNull(result.fruit)
@@ -119,7 +119,7 @@ class RoundTest {
 
     @Test
     fun `extra life is awarded once at ten thousand points`() {
-        val pellet = TilePos(1, 3)
+        val pellet = TilePos(1, 2)
         val start = at(pellet, running()).copy(score = 9950, lives = 3)
         val (boosted, events) = engine.advance(start, 1.0 / 120.0)
         assertEquals(10_000, boosted.score)
@@ -127,7 +127,7 @@ class RoundTest {
         assertTrue(boosted.extraLifeAwarded)
         assertTrue(events.contains(GameEvent.ExtraLife))
 
-        val (again, moreEvents) = engine.advance(at(TilePos(9, 22), boosted), 1.0 / 120.0)
+        val (again, moreEvents) = engine.advance(at(TilePos(9, 23), boosted), 1.0 / 120.0)
         assertEquals(4, again.lives)
         assertFalse(moreEvents.contains(GameEvent.ExtraLife))
     }
@@ -184,8 +184,8 @@ class RoundTest {
     }
 
     @Test
-    fun `clearing a level advances to the other maze and resets rounds`() {
-        val dot = TilePos(9, 22)
+    fun `clearing a level advances to the next level and resets rounds`() {
+        val dot = TilePos(9, 23)
         val board = maze.tiles.map { if (it.isEdible) Tile.EMPTY else it }.toMutableList()
         board[maze.indexOf(dot)] = Tile.DOT
         val start = running().copy(
@@ -202,8 +202,8 @@ class RoundTest {
 
         val (next, _) = engine.advance(cleared, 2.1)
         assertEquals(2, next.level)
-        assertEquals(Mazes.B.name, next.maze.name)
-        assertEquals(Mazes.B.dotCount(), next.dotsRemaining)
+        assertEquals(Mazes.forLevel(2).name, next.maze.name)
+        assertEquals(Mazes.forLevel(2).dotCount(), next.dotsRemaining)
         assertEquals(4, next.pelletsRemaining)
         assertEquals(710, next.score)
         assertEquals(2, next.lives)
@@ -217,6 +217,23 @@ class RoundTest {
         val (running, events) = engine.advance(ready, 2.1)
         assertEquals(GamePhase.RUNNING, running.phase)
         assertTrue(events.contains(GameEvent.LevelStart))
+    }
+
+    @Test
+    fun `levels follow the arcade maze order`() {
+        assertEquals("Maze 1", Mazes.forLevel(1).name)
+        assertEquals("Maze 1", Mazes.forLevel(2).name)
+        assertEquals("Maze 2", Mazes.forLevel(3).name)
+        assertEquals("Maze 2", Mazes.forLevel(5).name)
+        assertEquals("Maze 3", Mazes.forLevel(6).name)
+        assertEquals("Maze 3", Mazes.forLevel(9).name)
+        assertEquals("Maze 4", Mazes.forLevel(10).name)
+        assertEquals("Maze 4", Mazes.forLevel(13).name)
+        assertEquals("Maze 3", Mazes.forLevel(14).name)
+        assertEquals("Maze 3", Mazes.forLevel(17).name)
+        assertEquals("Maze 4", Mazes.forLevel(18).name)
+        assertEquals("Maze 4", Mazes.forLevel(21).name)
+        assertEquals("Maze 3", Mazes.forLevel(22).name)
     }
 
     @Test

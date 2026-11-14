@@ -30,6 +30,7 @@ object MazeValidator {
         errors += validatePlayerReachability(maze)
         errors += validateHouseReachability(maze)
         errors += validateTunnel(maze)
+        errors += validateDeadEnds(maze)
 
         return errors
     }
@@ -45,7 +46,7 @@ object MazeValidator {
         }
         for (row in 0 until maze.rows) {
             for (col in listOf(0, maze.columns - 1)) {
-                val isTunnel = row == maze.tunnelRow &&
+                val isTunnel = row in maze.tunnelRows &&
                     maze.tiles[row * maze.columns + col] == Tile.TUNNEL
                 if (!isTunnel && maze.tiles[row * maze.columns + col] != Tile.WALL) {
                     errors += "Border tile ($col, $row) must be a wall or a tunnel"
@@ -87,15 +88,32 @@ object MazeValidator {
 
     private fun validateTunnel(maze: Maze): List<String> {
         val errors = mutableListOf<String>()
-        if (maze.tunnelRow !in 0 until maze.rows) {
-            errors += "Tunnel row is outside the maze"
-            return errors
+        for (row in maze.tunnelRows) {
+            if (row !in 0 until maze.rows) {
+                errors += "Tunnel row $row is outside the maze"
+                continue
+            }
+            if (maze.tileAt(0, row) != Tile.TUNNEL) {
+                errors += "Tunnel on row $row does not reach the left edge"
+            }
+            if (maze.tileAt(maze.columns - 1, row) != Tile.TUNNEL) {
+                errors += "Tunnel on row $row does not reach the right edge"
+            }
         }
-        if (maze.tileAt(0, maze.tunnelRow) != Tile.TUNNEL) {
-            errors += "Tunnel does not reach the left edge"
-        }
-        if (maze.tileAt(maze.columns - 1, maze.tunnelRow) != Tile.TUNNEL) {
-            errors += "Tunnel does not reach the right edge"
+        return errors
+    }
+
+    private fun validateDeadEnds(maze: Maze): List<String> {
+        val errors = mutableListOf<String>()
+        for (row in 0 until maze.rows) {
+            for (col in 0 until maze.columns) {
+                val pos = TilePos(col, row)
+                if (!maze.isPlayerWalkable(pos)) continue
+                val exits = NEIGHBORS.count { offset ->
+                    maze.isPlayerWalkable(TilePos(pos.col + offset.col, pos.row + offset.row))
+                }
+                if (exits <= 1) errors += "Dead end at ($col, $row)"
+            }
         }
         return errors
     }

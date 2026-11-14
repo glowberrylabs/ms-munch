@@ -23,10 +23,10 @@ object MazeParser {
         }
         val houseSlots = houseSlots(name, board.house)
         val fruitAnchor = fruitAnchor(name, board.tiles, columns, rows.size, door, board.house)
-        val tunnelRow = rows.indexOfFirst { row ->
-            row.firstOrNull() == 'T' && row.lastOrNull() == 'T'
+        val tunnelRows = rows.indices.filter { row ->
+            rows[row].firstOrNull() == 'T' && rows[row].lastOrNull() == 'T'
         }
-        require(tunnelRow >= 0) { "Maze $name has no wrapping tunnel row" }
+        require(tunnelRows.isNotEmpty()) { "Maze $name has no wrapping tunnel row" }
 
         return Maze(
             name = name,
@@ -44,7 +44,7 @@ object MazeParser {
                 TilePos(columns - 2, rows.size - 2),
                 TilePos(1, rows.size - 2)
             ),
-            tunnelRow = tunnelRow
+            tunnelRows = tunnelRows
         )
     }
 

@@ -1,19 +1,17 @@
 package com.glowberrylabs.msmunch.game
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MazeTest {
 
-    private val mazes = listOf(
-        MazeParser.parse("A", MazeLayouts.mazeA),
-        MazeParser.parse("B", MazeLayouts.mazeB)
-    )
+    private val mazes = MazeLayouts.all.mapIndexed { index, layout ->
+        MazeParser.parse("Maze ${index + 1}", layout)
+    }
 
     @Test
-    fun `both mazes parse to 28 by 31 boards`() {
+    fun `all mazes parse to 28 by 31 boards`() {
         mazes.forEach { maze ->
             assertEquals(28, maze.columns)
             assertEquals(31, maze.rows)
@@ -22,7 +20,7 @@ class MazeTest {
     }
 
     @Test
-    fun `both mazes pass validation`() {
+    fun `all mazes pass validation`() {
         mazes.forEach { maze ->
             val errors = MazeValidator.validate(maze)
             assertTrue("${maze.name}: $errors", errors.isEmpty())
@@ -30,10 +28,12 @@ class MazeTest {
     }
 
     @Test
-    fun `both mazes have about 240 dots and four pellets`() {
-        assertEquals(246, mazes[0].dotCount())
-        assertEquals(236, mazes[1].dotCount())
-        mazes.forEach { maze -> assertEquals(4, maze.pelletCount()) }
+    fun `all mazes match the arcade dot and pellet counts`() {
+        val expectedDots = listOf(220, 240, 238, 234)
+        mazes.forEachIndexed { index, maze ->
+            assertEquals(expectedDots[index], maze.dotCount())
+            assertEquals(4, maze.pelletCount())
+        }
     }
 
     @Test
@@ -57,16 +57,27 @@ class MazeTest {
     }
 
     @Test
-    fun `tunnels reach both edges on the tunnel row`() {
-        mazes.forEach { maze ->
-            assertEquals(Tile.TUNNEL, maze.tileAt(0, maze.tunnelRow))
-            assertEquals(Tile.TUNNEL, maze.tileAt(maze.columns - 1, maze.tunnelRow))
+    fun `tunnels match the arcade rows and reach both edges`() {
+        val expectedTunnels = listOf(listOf(8, 17), listOf(1, 23), listOf(9), listOf(13, 16))
+        mazes.forEachIndexed { index, maze ->
+            assertEquals(expectedTunnels[index], maze.tunnelRows)
+            maze.tunnelRows.forEach { row ->
+                assertEquals(Tile.TUNNEL, maze.tileAt(0, row))
+                assertEquals(Tile.TUNNEL, maze.tileAt(maze.columns - 1, row))
+            }
         }
     }
 
     @Test
-    fun `the two mazes are different layouts`() {
-        assertNotEquals(MazeLayouts.mazeA, MazeLayouts.mazeB)
+    fun `no maze has a dead end`() {
+        mazes.forEach { maze ->
+            assertTrue("${maze.name} has dead ends: ${deadEnds(maze)}", deadEnds(maze).isEmpty())
+        }
+    }
+
+    @Test
+    fun `the four mazes are different layouts`() {
+        assertEquals(4, MazeLayouts.all.toSet().size)
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -79,5 +90,26 @@ class MazeTest {
             ####
             """.trimIndent()
         )
+    }
+
+    private fun deadEnds(maze: Maze): List<TilePos> {
+        val neighbors = listOf(
+            TilePos(0, -1),
+            TilePos(-1, 0),
+            TilePos(0, 1),
+            TilePos(1, 0)
+        )
+        return buildList {
+            for (row in 0 until maze.rows) {
+                for (col in 0 until maze.columns) {
+                    val pos = TilePos(col, row)
+                    if (!maze.isPlayerWalkable(pos)) continue
+                    val exits = neighbors.count { offset ->
+                        maze.isPlayerWalkable(TilePos(pos.col + offset.col, pos.row + offset.row))
+                    }
+                    if (exits <= 1) add(pos)
+                }
+            }
+        }
     }
 }

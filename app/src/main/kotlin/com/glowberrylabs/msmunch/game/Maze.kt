@@ -11,12 +11,13 @@ data class Maze(
     val fruitAnchor: TilePos,
     val houseSlots: List<TilePos>,
     val scatterTargets: List<TilePos>,
-    val tunnelRow: Int
+    val tunnelRows: List<Int>
 ) {
     init {
         require(tiles.size == columns * rows)
         require(houseSlots.isNotEmpty())
         require(scatterTargets.size == 4)
+        require(tunnelRows.isNotEmpty())
     }
 
     fun tileAt(col: Int, row: Int): Tile {

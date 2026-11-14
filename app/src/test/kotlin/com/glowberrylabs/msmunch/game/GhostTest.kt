@@ -8,7 +8,7 @@ import org.junit.Test
 
 class GhostTest {
 
-    private val maze = Mazes.A
+    private val maze = Mazes.forLevel(1)
 
     private fun running(engine: GameEngine, level: Int = 1): GameState =
         engine.newGame(maze).copy(phase = GamePhase.RUNNING, level = level)

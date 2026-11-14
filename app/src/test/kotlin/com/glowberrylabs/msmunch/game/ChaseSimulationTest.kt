@@ -6,10 +6,13 @@ import org.junit.Test
 class ChaseSimulationTest {
 
     @Test
-    fun `a stationary player is caught on both mazes`() {
-        listOf(Mazes.A, Mazes.B).forEach { maze ->
+    fun `a stationary player is caught on every maze`() {
+        Mazes.all.forEach { maze ->
             val engine = GameEngine(kotlin.random.Random(1))
-            var state = engine.newGame(maze).copy(phase = GamePhase.RUNNING)
+            var state = engine.newGame(maze).copy(
+                phase = GamePhase.RUNNING,
+                dotsEaten = ALL_GHOSTS_RELEASED_DOTS
+            )
             var time = 0.0
             var caught = false
             while (time < CATCH_LIMIT_SECONDS) {
@@ -31,5 +34,6 @@ class ChaseSimulationTest {
     private companion object {
         const val STEP_SECONDS = 1.0 / 120.0
         const val CATCH_LIMIT_SECONDS = 20.0
+        const val ALL_GHOSTS_RELEASED_DOTS = 70
     }
 }
