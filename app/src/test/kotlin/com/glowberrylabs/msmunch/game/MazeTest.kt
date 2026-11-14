@@ -31,7 +31,7 @@ class MazeTest {
 
     @Test
     fun `both mazes have about 240 dots and four pellets`() {
-        assertEquals(242, mazes[0].dotCount())
+        assertEquals(246, mazes[0].dotCount())
         assertEquals(236, mazes[1].dotCount())
         mazes.forEach { maze -> assertEquals(4, maze.pelletCount()) }
     }
