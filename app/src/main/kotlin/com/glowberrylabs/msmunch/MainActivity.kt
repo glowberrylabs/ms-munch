@@ -8,13 +8,16 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.glowberrylabs.msmunch.game.GamePhase
 import com.glowberrylabs.msmunch.game.GameViewModel
+import com.glowberrylabs.msmunch.game.GameViewModelFactory
 import com.glowberrylabs.msmunch.ui.GameActions
 import com.glowberrylabs.msmunch.ui.GameScreen
 import com.glowberrylabs.msmunch.ui.MsMunchTheme
@@ -36,8 +39,15 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             MsMunchTheme {
-                val viewModel: GameViewModel = viewModel()
+                val factory = remember { GameViewModelFactory(applicationContext) }
+                val viewModel: GameViewModel = viewModel(factory = factory)
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val view = LocalView.current
+
+                DisposableEffect(viewModel, view) {
+                    viewModel.attachHaptics(view)
+                    onDispose { viewModel.detachHaptics(view) }
+                }
 
                 BackHandler {
                     if (uiState.game.phase == GamePhase.RUNNING) {
