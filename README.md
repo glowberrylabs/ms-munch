@@ -20,10 +20,10 @@ and no runtime permissions.
 - Pause any time with the HUD button. Back pauses a live round; a
   second back exits. The game also pauses when the app goes to the
   background.
-- Turn the phone either way. Portrait puts the joystick below the
+- Turn the phone either way. Portrait centers the joystick below the
   maze; landscape puts it in a side gutter.
-- Pick a left or right joystick in the pause menu. The choice is
-  remembered, along with mute and the best score.
+- In landscape, pick a left or right gutter in the pause menu. The
+  choice is remembered, along with mute and the best score.
 
 ## Build
 
