@@ -121,8 +121,8 @@
 
 ## Joystick controls
 
-- A fixed joystick lives in a dedicated control strip below the maze in
-  portrait and in a side gutter in landscape.
+- A fixed joystick lives centered in a dedicated control strip below
+  the maze in portrait and in a side gutter in landscape.
 - The base is analog-looking with a knob, but output is four-way
   digital. Diagonal input is ignored.
 - Base diameter 132dp, knob 56dp. Engage at 28 percent of the base
@@ -133,8 +133,8 @@
   the strip steers continuously.
 - One active pointer. Additional fingers are ignored.
 - Direction changes fire a light haptic tick.
-- A handedness toggle in the pause menu persists and anchors the stick
-  to that third of the strip. It also chooses the landscape gutter.
+- A handedness toggle in the pause menu persists and chooses the
+  landscape gutter.
 - The stick is disabled during start, ready, paused, level-clear, and
   game-over overlays.
 - Pause button in the HUD. Auto-pause at `ON_PAUSE`. Back pauses a
@@ -160,8 +160,9 @@
   mute.
 - Overlays: start, Ready!, paused, level cleared, and game over, with
   friendly copy, large icon buttons, and fade and scale animation.
-- Responsive layout: portrait stacks the HUD, maze, and control strip.
-  Landscape centers the maze with the joystick in a side gutter.
+- Responsive layout: portrait stacks the HUD, maze, and a centered
+  control strip. Landscape centers the maze with the joystick in the
+  chosen side gutter.
 - Edge-to-edge layout with safe drawing insets applied.
 - No text is required to play.
 
@@ -283,8 +284,8 @@
 - `just check` and `just test` pass.
 - The merged manifest contains no runtime permissions and no INTERNET
   permission.
-- Joystick steering, tap-to-turn, handedness, and pause work in
-  portrait and landscape.
+- Joystick steering, tap-to-turn, the landscape gutter choice, and
+  pause work in portrait and landscape.
 - All four mazes play, all four ghost personalities are observable, and
   the frightened chain and eyes return work.
 - Lives, extra life, fruit, level ramp, high score, mute, and
